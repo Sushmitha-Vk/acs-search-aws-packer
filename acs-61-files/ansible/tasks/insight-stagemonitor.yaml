@@ -1,0 +1,54 @@
+---
+- hosts: all
+  name: Setup Stagemonitor for Solr Instance
+  vars_files:
+    - ../vars/external_vars.yml
+  vars:
+    stagemonitor:
+      active: 'true'
+      password: '$m'
+      instanceName: '@@instance_name@@'
+      applicationName: '@@application_name@@'
+      internal:
+        monitoring: 'true'
+      requestmonitor:
+        spring:
+            monitorOnlySpringMvcRequests: 'true'
+      profiler:
+        active: 'true'
+      instrument:
+        debug: 'true'
+        include: 'org.apache.solr,org.alfresco.solr,org.quartz'
+      threadPools:
+        queueCapacityLimit: 50000
+      tracing:
+        monitorScheduledTasks: 'true'
+        monitorAsyncInvocations: 'true'
+        sampling:
+          percent:
+            default: 0.1
+      web:
+        widget:
+          enabled: 'true'
+      reporting:
+        interval:
+          console: 0
+          elasticsearch: 5
+        elasticsearch:
+          url: '@@elasticsearch_url@@'
+
+  tasks:
+    - name: Setup Stagemonitor for Solr
+      become_user: "{{ alfresco_user }}"
+      become: yes
+      command: "bash {{ files_path }}/stagemonitor/insight/setup.sh"
+
+    - name: Configure stagemonitor.properties (tomcat/shared/classes)
+      become : yes
+      become_user: "{{ alfresco_user }}"
+      template:
+        src: "{{ files_path }}/stagemonitor/stagemonitor.properties"
+        dest: "{{ deploy_dir }}/alfresco-insight-engine/solr/server/stagemonitor.properties"
+        owner: "{{ alfresco_user }}"
+        group: "{{ alfresco_group }}"
+        force: true

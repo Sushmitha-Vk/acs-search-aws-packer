@@ -1,0 +1,113 @@
+{
+  "variables": {
+    "aws_access_key": "{{ env `AWS_ACCESS_KEY` }}",
+    "aws_secret_key": "{{ env `AWS_SECRET_KEY` }}",
+    "vpc_region": "{{ env `VPC_REGION` }}",
+    "vpc_id": "{{ env `VPC_ID` }}",
+    "vpc_public_sn_id": "{{ env `VPC_PUBLIC_SN_ID` }}",
+    "ami_name": "{{ env `AMI_NAME`}}",    
+    "source_ami": "{{ env `SOURCE_AMI` }}",
+    "instance_type": "{{ env `INSTANCE_TYPE` }}",
+    "ssh_username": "{{ env `SSH_USERNAME` }}",
+    "nexus_user": "{{env `NEXUS_USER`}}",
+    "nexus_password": "{{env `NEXUS_PASSWORD`}}",
+    "aws_s3_bucket": "{{ env `AWS_S3_BUCKET` }}"    
+  },
+  "sensitive-variables": ["nexus_user", "nexus_password", "aws_access_key", "aws_secret_key"],
+  "builders": [
+    {
+      "type": "amazon-ebs",
+      "access_key": "",
+      "secret_key": "",
+      "region": "{{user `vpc_region`}}",
+      "vpc_filter": {
+        "filters": {
+          "tag:Name": "My App VPC",
+          "isDefault": "false"
+        }
+      },
+      "subnet_filter": {
+        "filters": {
+          "tag:Network Type": "Public"
+        },
+        "random": true
+      },
+      "subnet_id": "",
+      "associate_public_ip_address": false,
+      "security_group_id": "",
+      "source_ami": "{{user `source_ami`}}",
+      "instance_type": "{{user `instance_type`}}",
+      "ssh_username": "{{user `ssh_username`}}",
+      "ami_name": "{{user `ami_name`}}-{{ timestamp }}",
+      "ami_groups": "",
+      "launch_block_device_mappings": [
+        {
+          "device_name": "/dev/sda1",
+          "volume_type": "gp2",
+          "volume_size": "30",
+          "delete_on_termination": true
+        }
+      ]
+    }
+  ],
+  "provisioners": [
+    {
+      "type": "shell-local",
+      "command": "tar cvf acs-61-files.tar acs-61-files"
+    },
+    {
+      "destination": "/tmp/",
+      "source": "./acs-61-files.tar",
+      "type": "file",
+      "generated": "true"
+    },
+    {
+      "type": "shell",
+      "inline": "sudo tar xvf /tmp/acs-61-files.tar -C /tmp"
+    },
+    {
+      "type": "shell",
+      "inline": "sudo chmod -R o+rwx /tmp/acs-61-files"
+    },
+    {
+      "type": "shell-local",
+      "command": "rm acs-61-files.tar"
+    },
+    {
+      "type": "shell",
+      "inline": [
+        "sudo pip install --upgrade pip",
+        "sudo pip install --upgrade awscli ansible boto3"
+      ]
+    },
+    {
+      "type": "ansible-local",
+      "playbook_dir": "acs-61-files/ansible",
+      "playbook_file": "acs-61-files/ansible/download-files.yaml",
+      "extra_arguments": [
+        "--extra-vars \"aws_access_key={{ user `aws_access_key` }} aws_secret_key={{ user `aws_secret_key` }} aws_s3_bucket={{ user `aws_s3_bucket` }}\""
+      ]
+    },    
+    {
+      "type": "ansible-local",
+      "playbook_dir": "acs-61-files/ansible",
+      "playbook_paths" : ["acs-61-files/ansible/tasks","acs-61-files/ansible/vars"],
+      "playbook_file": "acs-61-files/ansible/alfresco-instance.yaml"
+    },
+    {
+      "type": "shell",
+      "inline": "sudo rm -rf /tmp/acs-61-files*"
+    },
+    {
+      "type": "shell",
+      "inline": "sudo rm -rf /tmp/packer-provisioner-ansible-local"
+    }    
+  ],
+  "post-processors": [
+    {
+      "type": "manifest",
+      "output": "manifest.json",
+      "strip_path": true
+    }
+  ]
+}

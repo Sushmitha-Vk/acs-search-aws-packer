@@ -1,0 +1,12 @@
+{
+    "aws_access_key": "",
+    "aws_secret_key": "",
+    "vpc_region": "ap-southeast-2",
+    "vpc_id": "vpc-c64bb8a1",
+    "vpc_public_sn_id": "",
+    "source_ami": "ami-0ee8c22bf9599f47b",
+    "instance_type": "m4.2xlarge",
+    "ami_name": "acs-61-solr",
+    "ssh_username": "ec2-user",
+    "aws_s3_bucket": "dpaul-nab-pe-terraform-acs-61-deployment"
+}

@@ -1,0 +1,62 @@
+---
+- hosts: all
+  name: Setup Stagemonitor for Alfresco Repository
+  vars_files:
+    - ../vars/external_vars.yml
+  vars:
+    stagemonitor:
+      active: 'true'
+      password: '$m'
+      instanceName: '@@instance_name@@'
+      applicationName: '@@application_name@@'
+      internal:
+        monitoring: 'true'
+      requestmonitor:
+        spring:
+            monitorOnlySpringMvcRequests: 'true'
+      profiler:
+        active: 'true'
+      instrument:
+        debug: 'true'
+        include: 'org.alfresco.repo'
+      threadPools:
+        queueCapacityLimit: 50000
+      tracing:
+        monitorScheduledTasks: 'true'
+        monitorAsyncInvocations: 'true'
+        sampling:
+          percent:
+            default: 0.1
+      web:
+        widget:
+          enabled: 'false'
+      reporting:
+        interval:
+          console: 0
+          elasticsearch: 5
+        elasticsearch:
+          url: '@@elasticsearch_url@@'
+
+  tasks:
+
+    - name: Copy Stagemonitor modules
+      become : yes
+      become_user: "{{ alfresco_user }}"
+      synchronize:
+        src: '{{ files_path }}/stagemonitor/alfresco/tomcat/'
+        dest: "{{ alfresco_root_dir }}/tomcat/"
+        rsync_opts:
+          - --verbose
+          - --include=*/
+          - --include=*.jar
+          - --exclude=*
+
+    - name: Configure stagemonitor.properties (tomcat/shared/classes)
+      become : yes
+      become_user: "{{ alfresco_user }}"
+      template:
+        src: "{{ files_path }}/stagemonitor/stagemonitor.properties"
+        dest: "{{ alfresco_root_dir }}/tomcat/shared/classes/stagemonitor.properties"
+        owner: "{{ alfresco_user }}"
+        group: "{{ alfresco_group }}"
+        force: true
